@@ -1,0 +1,9 @@
+# Milestone 0-1 (EDA and baseline). Unpinned on purpose until the first
+# working environment exists; pin with a lock file in Milestone 1.
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+jupyter
+pyarrow

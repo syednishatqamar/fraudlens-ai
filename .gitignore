@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- FraudLens ---
+# Datasets and generated data never go in git (keep folder markers only)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+# MLflow local tracking and model artifacts
+mlruns/
+mlartifacts/
+*.pkl
+*.joblib
+*.pt
+*.onnx
+# Local env files (the template .env.example is tracked)
+!.env.example
