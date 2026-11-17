@@ -54,3 +54,51 @@ def test_tree_model_runs_on_synthetic_rows():
     X = make_tree_features(out, enc)
     scores = build_tree_model().fit(X, out["is_fraud"]).predict_proba(X)[:, 1]
     assert scores.shape == (len(out),)
+
+
+def _one_customer(times_sec, amounts=None):
+    base = pd.Timestamp("2020-01-01")
+    n = len(times_sec)
+    return pd.DataFrame({
+        "trans_date_trans_time": [base + pd.Timedelta(seconds=t) for t in times_sec],
+        "cc_num": [1] * n,
+        "merchant": ["m"] * n,
+        "category": ["food"] * n,
+        "amt": amounts or [10.0] * n,
+        "is_fraud": [0] * n,
+    })
+
+
+def test_recent_transaction_counts_hand_checked():
+    out = add_behaviour_features(_one_customer([0, 10, 3500, 3600, 7300]))
+    assert out["txn_count_1h"].tolist() == [0, 1, 2, 3, 0]
+    assert out["txn_count_24h"].tolist() == [0, 1, 2, 3, 4]
+
+
+def test_recent_counts_are_per_customer():
+    a = _one_customer([0, 10, 20])
+    b = _one_customer([5, 15]).assign(cc_num=2)
+    out = add_behaviour_features(pd.concat([a, b], ignore_index=True))
+    assert out.loc[out["cc_num"] == 1, "txn_count_1h"].tolist() == [0, 1, 2]
+    assert out.loc[out["cc_num"] == 2, "txn_count_1h"].tolist() == [0, 1]
+
+
+def test_recent_counts_ignore_future_rows():
+    base = synthetic(400, 3)
+    base["trans_date_trans_time"] = pd.to_datetime(base["trans_date_trans_time"])
+    a = add_behaviour_features(base)
+    extra = base.iloc[[0]].copy()
+    extra["trans_date_trans_time"] = base["trans_date_trans_time"].max() + pd.Timedelta(minutes=1)
+    b = add_behaviour_features(pd.concat([base, extra], ignore_index=True))
+    cols = ["txn_count_1h", "txn_count_24h"]
+    pd.testing.assert_frame_equal(a[cols], b.iloc[: len(a)][cols].reset_index(drop=True))
+
+
+def test_velocity_columns_are_opt_in_for_the_tree_model():
+    from src.models.tree import FEATURE_COLUMNS, VELOCITY_COLUMNS
+
+    out = prepared()
+    enc = fit_category_encoder(out)
+    assert list(make_tree_features(out, enc).columns) == FEATURE_COLUMNS
+    cols = FEATURE_COLUMNS + VELOCITY_COLUMNS
+    assert list(make_tree_features(out, enc, columns=cols).columns) == cols

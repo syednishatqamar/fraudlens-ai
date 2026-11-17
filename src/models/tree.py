@@ -5,13 +5,16 @@ src.features.behaviour.add_behaviour_features.
 """
 from __future__ import annotations
 
+from typing import Sequence
+
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.preprocessing import OrdinalEncoder
 
 from src.data.loader import Schema
 
-FEATURE_COLUMNS = ["amount", "hour", "category_code", "secs_since_prev", "amt_vs_avg"]
+FEATURE_COLUMNS = ["amount", "hour", "category_code", "secs_since_prev", "amt_vs_avg"]  # default set
+VELOCITY_COLUMNS = ["txn_count_1h", "txn_count_24h"]  # optional, opt in via `columns`
 
 
 def fit_category_encoder(train_df: pd.DataFrame, schema: Schema = Schema()) -> OrdinalEncoder:
@@ -19,8 +22,14 @@ def fit_category_encoder(train_df: pd.DataFrame, schema: Schema = Schema()) -> O
     return enc.fit(train_df[[schema.category]])
 
 
-def make_tree_features(df: pd.DataFrame, encoder: OrdinalEncoder, schema: Schema = Schema()) -> pd.DataFrame:
-    return pd.DataFrame(
+def make_tree_features(
+    df: pd.DataFrame,
+    encoder: OrdinalEncoder,
+    schema: Schema = Schema(),
+    columns: Sequence[str] = FEATURE_COLUMNS,
+) -> pd.DataFrame:
+    """Build the model matrix with the requested columns (default: the original five)."""
+    full = pd.DataFrame(
         {
             "amount": df[schema.amount].to_numpy(),
             "hour": df[schema.time].dt.hour.to_numpy(),
@@ -29,7 +38,11 @@ def make_tree_features(df: pd.DataFrame, encoder: OrdinalEncoder, schema: Schema
             "amt_vs_avg": df["amt_vs_avg"].to_numpy(),
         },
         index=df.index,
-    )[FEATURE_COLUMNS]
+    )
+    for c in VELOCITY_COLUMNS:
+        if c in df.columns:
+            full[c] = df[c].to_numpy()
+    return full[list(columns)]
 
 
 def build_tree_model(seed: int = 42) -> HistGradientBoostingClassifier:
