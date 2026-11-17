@@ -1,0 +1,6 @@
+# API and analyst workflow (Milestone 7). Install in addition to requirements.txt.
+fastapi
+uvicorn
+sqlalchemy
+httpx
+# psycopg[binary]   # uncomment when running against PostgreSQL

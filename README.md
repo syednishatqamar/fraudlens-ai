@@ -3,9 +3,9 @@
 **An explainable fraud investigation and risk decision engine.**
 A miniature AI fraud analyst: a trained model *detects*, an agent *investigates*, a human *decides*.
 
-> **Status: Milestone 0 (scaffolding).** No model, agent, API or UI exists yet.
-> Everything below describes the *plan*. Nothing in this README reports results; metrics
-> will be added only after they have been measured and are reproducible.
+> **Status: work in progress (Milestones 1 to 5 done, 6 and 7 partly done).** Measured results are in
+> [`docs/experiments.md`](docs/experiments.md). All results are on a synthetic dataset, on a validation period, and must not be
+> read as real-world performance. The final test file has not been evaluated yet.
 
 ## Why this project
 
@@ -99,13 +99,13 @@ Each milestone ends with something demoable and a short write-up in `LEARNING_LO
 Full detail in [`docs/roadmap.md`](docs/roadmap.md).
 
 - [x] **M0 Scaffold:** repo structure, docs, EDA notebook skeleton
-- [ ] **M1 Data and baseline:** download, verify, EDA, chronological split, logistic-regression baseline
-- [ ] **M2 Feature engineering:** velocity, user baselines, geo, merchant, time features (leakage-safe)
-- [ ] **M3 Models:** Random Forest, XGBoost/LightGBM, anomaly detector; compared and tracked in MLflow
-- [ ] **M4 Evaluation and thresholds:** PR-AUC, cost-aware threshold selection, calibration
-- [ ] **M5 Explainability:** SHAP output turned into reason codes
-- [ ] **M6 Investigation agent:** LangGraph agent with tools, report, CLEAR/REVIEW/BLOCK recommendation
-- [ ] **M7 API and persistence:** FastAPI + PostgreSQL (+ Redis), cases and analyst decisions
+- [x] **M1 Data and baseline:** download, verify, EDA, chronological split, logistic-regression baseline
+- [x] **M2 Feature engineering:** velocity counts, user baselines, new-merchant and distance features (leakage-safe, tested)
+- [ ] **M3 Models:** gradient-boosted trees done (sklearn HistGradientBoosting); still to do: Random Forest / LightGBM comparison, anomaly detector, MLflow tracking
+- [x] **M4 Evaluation and thresholds:** PR-AUC, cost-aware threshold selection, calibration
+- [x] **M5 Explainability:** SHAP output turned into reason codes
+- [ ] **M6 Investigation agent:** rule-based case file and optional guarded LLM note done; LangGraph orchestration still to do
+- [ ] **M7 API and persistence:** FastAPI + analyst decision workflow done (tested on SQLite); PostgreSQL, Redis and auth still to do
 - [ ] **M8 Dashboard:** React analyst UI with Approve/Reject/Escalate
 - [ ] **M9 Productionise:** Docker Compose, GitHub Actions CI, monitoring, n8n notifications
 - [ ] **Stretch: graph-based fraud-ring detection** (only after M1–M9; likely needs another dataset such as PaySim)
