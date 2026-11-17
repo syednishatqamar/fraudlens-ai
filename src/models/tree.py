@@ -18,6 +18,7 @@ VELOCITY_COLUMNS = ["txn_count_1h", "txn_count_24h"]  # optional, opt in via `co
 NOVELTY_COLUMNS = ["new_merchant"]
 LOCATION_COLUMNS = ["distance_km"]
 OPTIONAL_COLUMNS = VELOCITY_COLUMNS + NOVELTY_COLUMNS + LOCATION_COLUMNS
+V1_COLUMNS = FEATURE_COLUMNS + VELOCITY_COLUMNS  # model v1, see docs/decisions/0002-model-v1-feature-set.md
 
 
 def fit_category_encoder(train_df: pd.DataFrame, schema: Schema = Schema()) -> OrdinalEncoder:
