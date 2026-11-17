@@ -88,3 +88,22 @@ Reading
   different time period or a different draw of the 1,163 validation frauds, which is probably larger. Not quantified.
 - Practical gain is small: about 5 more frauds caught in the top-k on average (934 to 939).
 - Use the five-feature mean 0.8808 (std 0.0027) as the baseline reference, not the single-seed 0.8779.
+
+## New-merchant flag and distance (validation, 5 seeds, Kaggle, Nov 2026)
+
+Reference: five features + txn_count_1h + txn_count_24h = mean 0.8897, std 0.0035 (about 939 frauds caught on average).
+
+| Added to the reference | PR-AUC per seed | Mean | Std | Caught (mean of 5) |
+|---|---|---|---|---|
+| new_merchant | 0.8949, 0.8928, 0.8956, 0.8875, 0.8917 | 0.8925 | 0.0032 | 944.2 |
+| distance_km | 0.8874, 0.8857, 0.8891, 0.8854, 0.8897 | 0.8875 | 0.0019 | 938.6 |
+| both | 0.8892, 0.8934, 0.8905, 0.8901, 0.8919 | 0.8910 | 0.0016 | 939.6 |
+
+Reading
+- Differences from the reference (+0.0028, -0.0022, +0.0013) are all within about one seed std, and the standard error of a
+  difference between two 5-seed means is roughly 0.002. None is clearly distinguishable from noise.
+- new_merchant is the only one pointing up (+0.0028, about 5 more frauds caught); distance_km shows no gain.
+  Both together are no better than new_merchant alone.
+- Possible reason distance adds nothing: in this simulated data the merchant location may not depend on fraud. Not checked
+  (EDA section 9 has not been run, and the check that customer lat/long is a fixed home location has not been reported).
+- Feature engineering has hit diminishing returns on this dataset.
