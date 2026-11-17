@@ -90,3 +90,20 @@ def test_explain_case_logodds_reports_probability_score():
 def test_explain_case_rejects_unknown_scale():
     with pytest.raises(ValueError):
         explain_case(pd.Series({"amount": 1.0}), pd.Series({"amount": 0.1}), 0.0, scale="nope")
+
+
+def test_every_model_feature_has_a_plain_language_description():
+    """Regression: a feature without a template would leak its raw column name into analyst-facing text."""
+    from src.models.tree import FEATURE_COLUMNS, OPTIONAL_COLUMNS
+
+    for col in FEATURE_COLUMNS + OPTIONAL_COLUMNS:
+        text = describe_feature(col, 1.0, CATS)
+        assert col not in text and " = " not in text, f"{col} has no description: {text!r}"
+
+
+def test_new_feature_descriptions_hand_checked():
+    assert describe_feature("txn_count_24h", 2.0) == "Card made 2 earlier transaction(s) in the last 24 hours"
+    assert describe_feature("txn_count_1h", 0.0) == "Card made 0 earlier transaction(s) in the last hour"
+    assert describe_feature("new_merchant", 1) == "First time this card used this merchant"
+    assert describe_feature("new_merchant", 0) == "Card has used this merchant before"
+    assert describe_feature("distance_km", 104.4) == "Customer and merchant locations are 104 km apart"

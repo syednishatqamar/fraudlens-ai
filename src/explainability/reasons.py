@@ -66,6 +66,14 @@ def describe_feature(feature: str, value: float, category_names: Sequence[str] |
         if pd.isna(value):
             return "No earlier spending history to compare the amount with"
         return f"Amount is {value:.1f}x this customer's earlier average"
+    if feature == "txn_count_1h":
+        return f"Card made {int(value)} earlier transaction(s) in the last hour"
+    if feature == "txn_count_24h":
+        return f"Card made {int(value)} earlier transaction(s) in the last 24 hours"
+    if feature == "new_merchant":
+        return "First time this card used this merchant" if int(value) == 1 else "Card has used this merchant before"
+    if feature == "distance_km":
+        return f"Customer and merchant locations are {value:,.0f} km apart"
     return f"{feature} = {value}"
 
 
