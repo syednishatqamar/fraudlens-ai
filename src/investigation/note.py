@@ -92,17 +92,26 @@ def build_prompt(case: CaseFile) -> str:
 
 
 def template_note(case: CaseFile) -> str:
-    """Fixed-rule note built only from the case fields."""
+    """Fixed-rule note built only from the case fields (every number also appears in the rendered case text)."""
     reasons = "; ".join(r.text for r in case.risk_reasons[:3]) or "no single dominant factor"
-    parts = [f"Recommendation: {case.band} (fraud probability {case.probability:.1%}).", f"Main reasons from the model: {reasons}."]
+    ac = case.action_costs
+    cheapest = min(ac, key=ac.get)
+    parts = [
+        f"Recommendation: {case.band} (fraud probability {case.probability:.1%}).",
+        f"Expected cost if CLEARed {ac[CLEAR]:,.2f}, REVIEWed {ac[REVIEW]:,.2f}, BLOCKed {ac[BLOCK]:,.2f}; {cheapest} is cheapest (placeholder costs).",
+        f"Main reasons from the model: {reasons}.",
+    ]
     p = case.profile
     if p.get("n_prior"):
-        parts.append(f"The card has {p['n_prior']} earlier transactions with a typical amount of {p['median_amount']:,.2f}; this one is {case.amount:,.2f}.")
+        parts.append(f"The card has {p['n_prior']:,} earlier transactions with a typical amount of {p['median_amount']:,.2f}; this one is {case.amount:,.2f}.")
+    v = case.velocity
+    if v["txn_count_24h"] is not None and v["txn_count_1h"] is not None:
+        parts.append(f"The card made {v['txn_count_24h']:.0f} earlier transactions in the last 24 hours ({v['txn_count_1h']:.0f} in the last hour).")
     mf = case.merchant_fraud
     if mf["n_labelled"]:
-        parts.append(f"{mf['n_fraud']} of {mf['n_labelled']} labelled past transactions at this merchant were fraud.")
+        parts.append(f"{mf['n_fraud']} of {mf['n_labelled']:,} labelled past transactions at this merchant were fraud.")
     checks = [n for n in case.notes if n.startswith("CHECK")]
-    parts.append(" ".join(checks) if checks else "Verify the recent activity on the card before acting.")
+    parts.append(" ".join(checks) if checks else "Verify with the cardholder whether the recent transactions on the card are theirs.")
     return " ".join(parts)
 
 
