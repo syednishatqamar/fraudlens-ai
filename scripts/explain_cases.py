@@ -56,7 +56,7 @@ def main() -> None:
             e = explain_case(Xva.loc[idx], pushes.iloc[0], float(base[0]), names, scale=a.scale)
             print(f"\n- {e.summary}")
             for r in e.protective_reasons:
-                print(f"    lowering the score: {r.text} ({r.push:+.2f})")
+                print(f"    lowered the score vs a typical transaction: {r.text} ({r.push:+.2f})")
 
 
 if __name__ == "__main__":

@@ -106,7 +106,7 @@ def explain_case(
 
     if risk:
         parts = "; ".join(f"{r.text} ({r.push:+.2f})" for r in risk)
-        summary = f"Model score {score:.2f} (average {shown_base:.2f}). Main factors raising the score{unit}: {parts}."
+        summary = f"Model score {score:.2f} (average {shown_base:.2f}). Main factors raising the score{unit}, compared with a typical transaction: {parts}."
     else:
         summary = f"Model score {score:.2f} (average {shown_base:.2f}). No single factor raised the score noticeably."
     return CaseExplanation(score, shown_base, risk, protect, summary)
