@@ -82,3 +82,19 @@ def test_free_text_cannot_close_the_data_block():
     prompt = build_prompt(make_case(merchant=evil))
     assert prompt.count("CASE FILE>>>") == 1 and prompt.count("<<<CASE FILE") == 1
     assert ">>>" not in sanitize_case_text(evil) and "<<<" not in sanitize_case_text(evil)
+
+
+class _ApiError(Exception):
+    code, status = 404, "NOT_FOUND"
+
+
+def test_error_description_includes_http_code_and_status_but_not_the_message_by_default():
+    r = write_note(make_case(), FakeLLM(error=_ApiError("model xyz not found, key=SECRET123")))
+    assert r.issues == ["llm call failed: _ApiError (code 404, status NOT_FOUND)"]
+
+
+def test_error_details_are_opt_in_and_redact_the_key():
+    llm = FakeLLM(error=_ApiError("bad request for key SECRET123"))
+    llm.secret = "SECRET123"
+    r = write_note(make_case(), llm, error_detail=True)
+    assert "bad request for key ***" in r.issues[0] and "SECRET123" not in r.issues[0]

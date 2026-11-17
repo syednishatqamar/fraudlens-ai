@@ -44,6 +44,7 @@ class GeminiClient:
 
         self._client = genai.Client(api_key=api_key)
         self._model = model
+        self.secret = api_key  # only used to redact error messages
 
     def generate(self, prompt: str) -> str:
         return self._client.models.generate_content(model=self._model, contents=prompt).text or ""
@@ -115,13 +116,27 @@ def template_note(case: CaseFile) -> str:
     return " ".join(parts)
 
 
-def write_note(case: CaseFile, client: LLMClient | None = None, max_words: int = MAX_WORDS) -> NoteResult:
+def describe_error(exc: Exception, secret: str | None = None, detail: bool = False) -> str:
+    """Safe one-line description of an LLM error: type, HTTP code and status if present, optional redacted message."""
+    out = f"llm call failed: {type(exc).__name__}"
+    extra = [f"{k} {getattr(exc, k)}" for k in ("code", "status") if getattr(exc, k, None) is not None]
+    if extra:
+        out += " (" + ", ".join(extra) + ")"
+    if detail:
+        msg = str(exc)
+        if secret:
+            msg = msg.replace(secret, "***")
+        out += f": {msg[:300]}"
+    return out
+
+
+def write_note(case: CaseFile, client: LLMClient | None = None, max_words: int = MAX_WORDS, error_detail: bool = False) -> NoteResult:
     if client is None:
         return NoteResult(template_note(case), "template")
     try:
         text = client.generate(build_prompt(case)).strip()
-    except Exception as exc:  # network, quota, key problems: never expose more than the error type and message
-        return NoteResult(template_note(case), "template", [f"llm call failed: {type(exc).__name__}"])
+    except Exception as exc:  # network, quota, key problems: fall back; details only when asked and with the key redacted
+        return NoteResult(template_note(case), "template", [describe_error(exc, getattr(client, "secret", None), error_detail)])
     issues = validate_note(text, sanitize_case_text(render_case_text(case)), case.band, max_words)
     if issues:
         return NoteResult(template_note(case), "template", issues)

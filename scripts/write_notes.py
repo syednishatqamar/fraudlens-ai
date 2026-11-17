@@ -46,6 +46,7 @@ def main() -> None:
     ap.add_argument("--llm", choices=["none", "gemini"], default="none")
     ap.add_argument("--model", help="model name for --llm gemini (copy a current one from Google AI Studio)")
     ap.add_argument("--delay-seconds", type=float, default=5.0, help="pause between LLM calls (free-tier rate limits)")
+    ap.add_argument("--error-details", action="store_true", help="print the (key-redacted) message of a failed LLM call")
     ap.add_argument("--show-case", action="store_true", help="also print the full case file")
     a = ap.parse_args()
 
@@ -60,7 +61,7 @@ def main() -> None:
         if a.show_case:
             print("=" * 100)
             print(render_case_text(case))
-        result = write_note(case, client)
+        result = write_note(case, client, error_detail=a.error_details)
         print("=" * 100)
         print(f"CASE {case.case_id} | card ending {case.card_last4} | {case.band} | probability {case.probability:.1%}")
         print(f"[note source: {result.source}]")
