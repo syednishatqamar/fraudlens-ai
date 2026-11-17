@@ -70,6 +70,15 @@ def location_summary(txn: pd.Series) -> dict | None:
     return None if v is None or pd.isna(v) else {"distance_km": float(v)}
 
 
+def merchant_fraud_history(history: pd.DataFrame, idx: int, label_delay_days: int = 7, schema: Schema = Schema()) -> dict:
+    """Labelled earlier transactions at the same merchant (any card), using only labels at least label_delay_days old."""
+    txn = history.iloc[idx]
+    past = history.iloc[:idx]
+    past = past[past[schema.time] <= txn[schema.time] - pd.Timedelta(days=label_delay_days)]
+    at_merchant = past[past[schema.merchant] == txn[schema.merchant]]
+    return {"n_labelled": int(len(at_merchant)), "n_fraud": int(at_merchant[schema.label].sum()), "label_delay_days": label_delay_days}
+
+
 def similar_cases(
     history: pd.DataFrame,
     idx: int,

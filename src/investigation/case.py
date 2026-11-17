@@ -13,7 +13,7 @@ import pandas as pd
 from src.data.loader import Schema
 from src.explainability.reasons import CaseExplanation, Reason, humanize_seconds
 from src.investigation import tools
-from src.models.decision import BLOCK, CLEAR
+from src.models.decision import BLOCK, CLEAR, REVIEW, DecisionCosts
 
 MIN_SIMILAR = 20            # fewer comparable past transactions than this: too few to compare
 BLOCK_LOW_SHARE = 0.05      # BLOCK but fewer than 5% of comparable past transactions were fraud: flag for attention
@@ -37,6 +37,8 @@ class CaseFile:
     profile: dict
     velocity: dict
     merchant_history: dict
+    merchant_fraud: dict
+    action_costs: dict
     location: dict | None
     similar: dict
     notes: list[str] = field(default_factory=list)
@@ -50,11 +52,17 @@ def build_case(
     explanation: CaseExplanation,
     label_delay_days: int = 7,
     schema: Schema = Schema(),
+    costs: DecisionCosts = DecisionCosts(),
 ) -> CaseFile:
     txn = history.iloc[idx]
     card_past = tools.card_prior(history, idx, schema)
     similar = tools.similar_cases(history, idx, label_delay_days, schema=schema)
+    amount = float(txn[schema.amount])
+    action_costs = {CLEAR: probability * amount, REVIEW: costs.review_cost, BLOCK: (1.0 - probability) * costs.block_false_positive_cost}
+    cheapest = min(action_costs, key=action_costs.get)
     notes = []
+    if cheapest != band:
+        notes.append(f"CHECK: the band is {band} but {cheapest} is the cheapest action under the given costs.")
     if card_past.empty:
         notes.append("No earlier transactions on this card, so history-based facts are unavailable.")
     share, n = similar["fraud_share"], similar["n_similar"]
@@ -85,6 +93,8 @@ def build_case(
         profile=tools.spending_profile(card_past, schema),
         velocity=tools.velocity_summary(txn),
         merchant_history=tools.merchant_history(card_past, txn[schema.merchant], schema),
+        merchant_fraud=tools.merchant_fraud_history(history, idx, label_delay_days, schema),
+        action_costs=action_costs,
         location=tools.location_summary(txn),
         similar=similar,
         notes=notes,
@@ -104,6 +114,12 @@ def render_case_text(c: CaseFile) -> str:
         lines.append("Why the model flagged it: no single factor raised the score noticeably.")
     for r in c.protective_reasons:
         lines.append(f"  lowered the score vs a typical transaction: {r.text} ({r.push:+.2f})")
+    ac = c.action_costs
+    cheapest = min(ac, key=ac.get)
+    lines.append(
+        f"Why this action: expected cost if CLEARed {ac[CLEAR]:,.2f}, REVIEWed {ac[REVIEW]:,.2f}, BLOCKed {ac[BLOCK]:,.2f}; "
+        f"cheapest is {cheapest} (placeholder costs)"
+    )
     p = c.profile
     if p.get("n_prior"):
         lines.append(
@@ -120,6 +136,11 @@ def render_case_text(c: CaseFile) -> str:
         lines.append("Activity: " + "; ".join(parts))
     m = c.merchant_history
     lines.append("Merchant: first time this card used it" if m["new_merchant"] else f"Merchant: card used it {m['prior_visits']} time(s) before")
+    mf = c.merchant_fraud
+    lines.append(
+        f"Merchant record: {mf['n_fraud']} of {mf['n_labelled']} labelled past transactions at this merchant were fraud"
+        if mf["n_labelled"] else "Merchant record: no labelled past transactions at this merchant"
+    )
     if c.location:
         lines.append(f"Distance between customer and merchant: {c.location['distance_km']:,.0f} km")
     if c.recent_transactions:

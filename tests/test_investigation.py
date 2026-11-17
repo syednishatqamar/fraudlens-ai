@@ -144,3 +144,28 @@ def test_rendered_case_shows_one_probability_and_the_reasons():
     text = render_case_text(build_case(h, 6, 0.42, REVIEW, e))
     assert "42.0%" in text and "Transaction amount is 500.00 (+2.50)" in text
     assert "Model score" not in text        # the raw, uncalibrated score must not appear next to the calibrated probability
+
+
+def test_merchant_fraud_history_respects_label_delay_and_other_merchants():
+    rows = [
+        (0, "A", "food", 10.0, 1, 7),       # old enough, fraud
+        (1, "A", "food", 10.0, 0, 8),       # old enough, legitimate
+        (2, "B", "food", 10.0, 1, 7),       # other merchant
+        (8, "A", "food", 10.0, 1, 9),       # too new for a 7-day delay
+        (10, "A", "food", 10.0, 0, CARD),   # investigated
+    ]
+    h = make_history(rows)
+    m = tools.merchant_fraud_history(h, len(h) - 1, label_delay_days=7)
+    assert m["n_labelled"] == 2 and m["n_fraud"] == 1
+    assert tools.merchant_fraud_history(h, len(h) - 1, label_delay_days=0)["n_labelled"] == 3
+
+
+def test_action_costs_hand_checked_and_band_mismatch_noted():
+    h = make_history(card_rows())                       # investigated amount is 500.0
+    c = build_case(h, 6, 0.04, REVIEW, explanation())   # clear 20.0, review 5.0, block 24.0 -> REVIEW is cheapest
+    assert c.action_costs[CLEAR] == pytest.approx(20.0) and c.action_costs[REVIEW] == 5.0 and c.action_costs[BLOCK] == pytest.approx(24.0)
+    assert not any("cheapest action" in n for n in c.notes)
+    bad = build_case(h, 6, 0.04, BLOCK, explanation())
+    assert any("REVIEW is the cheapest" in n for n in bad.notes)
+    text = render_case_text(c)
+    assert "cheapest is REVIEW" in text and "Merchant record:" in text
