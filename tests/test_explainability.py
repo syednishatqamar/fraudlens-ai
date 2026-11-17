@@ -59,3 +59,34 @@ def test_shap_pushes_add_up_to_model_score():
     rows = X.head(5)
     pushes, base = ex.explain(rows)
     np.testing.assert_allclose(base + pushes.sum(axis=1).to_numpy(), model.predict_proba(rows)[:, 1], atol=1e-6)
+
+
+def test_logodds_pushes_add_up_to_margin_and_sigmoid_matches_probability():
+    pytest.importorskip("shap")
+    from src.explainability.shap_explainer import ShapExplainer
+
+    df = synthetic(600, seed=4)
+    df["trans_date_trans_time"] = pd.to_datetime(df["trans_date_trans_time"])
+    df = add_behaviour_features(df)
+    enc = fit_category_encoder(df)
+    X = make_tree_features(df, enc)
+    model = build_tree_model().fit(X, df["is_fraud"])
+    ex = ShapExplainer(model, X, scale="logodds")
+    rows = X.head(5)
+    pushes, base = ex.explain(rows)
+    margin = base + pushes.sum(axis=1).to_numpy()
+    np.testing.assert_allclose(margin, model.decision_function(rows), atol=1e-6)
+    np.testing.assert_allclose(1 / (1 + np.exp(-margin)), model.predict_proba(rows)[:, 1], atol=1e-6)
+
+
+def test_explain_case_logodds_reports_probability_score():
+    values = pd.Series({"amount": 900.0, "hour": 23, "category_code": 0, "secs_since_prev": 30.0, "amt_vs_avg": 9.0})
+    pushes = pd.Series({"amount": 3.0, "hour": 1.0, "category_code": -0.5, "secs_since_prev": 0.05, "amt_vs_avg": 0.4})
+    e = explain_case(values, pushes, base_value=-4.0, category_names=CATS, scale="logodds")
+    assert e.score == pytest.approx(1 / (1 + np.exp(-(-4.0 + pushes.sum()))))
+    assert "log-odds" in e.summary and "secs_since_prev" not in [r.feature for r in e.risk_reasons]
+
+
+def test_explain_case_rejects_unknown_scale():
+    with pytest.raises(ValueError):
+        explain_case(pd.Series({"amount": 1.0}), pd.Series({"amount": 0.1}), 0.0, scale="nope")

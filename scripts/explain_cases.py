@@ -28,6 +28,7 @@ def main() -> None:
     ap.add_argument("--train-end", required=True)
     ap.add_argument("--n", type=int, default=3, help="cases to print per group")
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--scale", choices=["probability", "logodds"], default="probability")
     a = ap.parse_args()
 
     s = Schema()
@@ -46,13 +47,13 @@ def main() -> None:
         "flagged but NOT fraud (false alarm)": val[val["flagged"] & (val[s.label] == 0)],
     }
 
-    explainer = ShapExplainer(model, Xtr)
+    explainer = ShapExplainer(model, Xtr, scale=a.scale)
     names = list(enc.categories_[0])
     for title, g in groups.items():
         print(f"\n######## {title}: {len(g)} cases ########")
         for idx in g.sample(min(a.n, len(g)), random_state=a.seed).index:
             pushes, base = explainer.explain(Xva.loc[[idx]])
-            e = explain_case(Xva.loc[idx], pushes.iloc[0], float(base[0]), names)
+            e = explain_case(Xva.loc[idx], pushes.iloc[0], float(base[0]), names, scale=a.scale)
             print(f"\n- {e.summary}")
             for r in e.protective_reasons:
                 print(f"    lowering the score: {r.text} ({r.push:+.2f})")

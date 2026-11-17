@@ -32,6 +32,10 @@ class CaseExplanation:
     summary: str = ""
 
 
+def _sigmoid(x: float) -> float:
+    return float(1.0 / (1.0 + np.exp(-x)))
+
+
 def humanize_seconds(sec: float) -> str:
     sec = float(sec)
     if sec < 120:
@@ -71,14 +75,24 @@ def explain_case(
     base_value: float,
     category_names: Sequence[str] | None = None,
     top_n: int = 3,
-    min_abs_push: float = 0.01,
+    min_abs_push: float | None = None,
+    scale: str = "probability",
 ) -> CaseExplanation:
     """Build an explanation for one transaction.
 
     values: the feature values the model saw; pushes: SHAP value per feature (same index).
-    Pushes smaller than `min_abs_push` (in score points) are treated as noise and omitted.
+    scale: "probability" (pushes in score points) or "logodds" (pushes in log-odds; the score shown is
+    the sigmoid of base + pushes, and the average shown is the sigmoid of the base).
+    Pushes smaller than `min_abs_push` are treated as noise and omitted
+    (default 0.01 for probability, 0.1 for log-odds).
     """
-    score = float(base_value + pushes.sum())
+    if scale not in ("probability", "logodds"):
+        raise ValueError("scale must be 'probability' or 'logodds'")
+    if min_abs_push is None:
+        min_abs_push = 0.01 if scale == "probability" else 0.1
+    total = float(base_value + pushes.sum())
+    score, shown_base = (total, float(base_value)) if scale == "probability" else (_sigmoid(total), _sigmoid(base_value))
+    unit = "" if scale == "probability" else " (pushes in log-odds)"
     reasons = []
     for feat in pushes.index:
         p = float(pushes[feat])
@@ -92,7 +106,7 @@ def explain_case(
 
     if risk:
         parts = "; ".join(f"{r.text} ({r.push:+.2f})" for r in risk)
-        summary = f"Model score {score:.2f} (average {base_value:.2f}). Main factors raising the score: {parts}."
+        summary = f"Model score {score:.2f} (average {shown_base:.2f}). Main factors raising the score{unit}: {parts}."
     else:
-        summary = f"Model score {score:.2f} (average {base_value:.2f}). No single factor raised the score noticeably."
-    return CaseExplanation(score, float(base_value), risk, protect, summary)
+        summary = f"Model score {score:.2f} (average {shown_base:.2f}). No single factor raised the score noticeably."
+    return CaseExplanation(score, shown_base, risk, protect, summary)
