@@ -107,3 +107,34 @@ Reading
 - Possible reason distance adds nothing: in this simulated data the merchant location may not depend on fraud. Not checked
   (EDA section 9 has not been run, and the check that customer lat/long is a fixed home location has not been reported).
 - Feature engineering has hit diminishing returns on this dataset.
+
+## Calibration and CLEAR / REVIEW / BLOCK bands (Kaggle, Nov 2026)
+
+Command: `python scripts/calibrate_and_decide.py --files .../fraudTrain.csv --train-end 2020-04-01 --calib-end 2020-05-15`
+(model v1 features, Platt calibration, placeholder costs: review 5, block false positive 25).
+
+Slices: train 1,097,693 rows / 6,343 frauds; calibration 98,535 / 582 (0.591%); evaluation 100,447 / 581 (0.578%).
+
+Calibration on the evaluation slice
+- Raw model score: Brier 0.01027, log loss 0.03779. Its top band (0.7 to 1.0, mean score 0.916) was actually fraud 40.1% of the time
+  (551 of 1,373). Below a score of 0.02 there were 0 frauds in about 90,000 transactions.
+- Platt calibrated: Brier 0.00169, log loss 0.00643. For reference, always predicting the base rate has Brier about 0.00575
+  (0.00578 x 0.99422), so the raw score was worse than that and the calibrated one is clearly better.
+- Reliability (predicted vs observed): 0.1 to 0.3 band 0.177 vs 0.176; 0.7 to 1.0 band 0.899 vs 0.919. Lower bands under-predict
+  (0.005 to 0.02: 0.010 vs 0.016; 0.02 to 0.1: 0.046 vs 0.062) and 0.3 to 0.7 over-predicts (0.495 vs 0.426), on 13 to 84 frauds
+  per band, so these deviations are noisy.
+
+Decisions on the evaluation slice
+| Band | Transactions | Share | Frauds | Fraud rate |
+|---|---|---|---|---|
+| CLEAR | 99,395 | 98.95% | 66 | 0.066% |
+| REVIEW | 697 | 0.69% | 176 | 25.3% |
+| BLOCK | 355 | 0.35% | 339 | 95.5% |
+
+6.9 reviews per 1,000 transactions. Total cost 7,836 vs 313,986 if everything is cleared vs 502,235 if everything is reviewed.
+Derived: cleared frauds account for about 3,951 of the 7,836 (about 60 per cleared fraud), consistent with the earlier finding
+that missed frauds are mostly small amounts.
+
+Caveats: costs are placeholders; REVIEW is assumed to decide correctly and BLOCK to stop fraud at no review cost; calibration
+and evaluation slices are adjacent in time with similar fraud rates (0.591% vs 0.578%), whereas the sealed test file has 0.386%, so
+calibrated probabilities are expected to be too high there; synthetic data.
