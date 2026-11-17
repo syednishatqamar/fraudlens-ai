@@ -2,9 +2,12 @@
 
 Run by the project owner in the Kaggle notebook `eda01_fraudlens`; the test file has not been evaluated.
 Single runs, one random seed, one validation period. The data is synthetic, so these scores must not be
-presented as real-world performance. The scripted, repeatable versions are `scripts/train_baseline.py`
-and `scripts/train_tree.py`; they have so far been checked only on synthetic rows, so reproducing these
-exact numbers from the repo is still to be done.
+presented as real-world performance. The scripted version of #4 is `scripts/train_tree.py`.
+
+Reproduction check (Kaggle, Nov 2026): `python scripts/train_tree.py --files .../fraudTrain.csv --train-end 2020-04-01`
+printed train 1,097,693 rows / 6,343 frauds, validation 198,982 rows / 1,163 frauds, validation PR-AUC 0.8779 and
+931 of 1,163 frauds caught (232 false alarms), matching the notebook result for #4. `scripts/train_baseline.py`
+has not yet been reproduced against #1 and #2 on real data.
 
 Metric: PR-AUC (a random model scores about the fraud rate, 0.0058 on validation).
 
