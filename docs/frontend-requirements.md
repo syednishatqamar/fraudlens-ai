@@ -32,6 +32,17 @@ Status: planned; nothing built yet.
 React + TypeScript + Vite, a component library (for example Ant Design, MUI or shadcn/ui with Tailwind), TanStack Table and Query,
 Recharts. Final choice depends on where the project is run and demoed, and whether Node tooling runs on the owner's machine.
 
+## Decisions (project owner, Nov 2026)
+- Access model: public DEMO MODE with no password. A visitor clicks "Enter demo" and chooses a role (analyst or senior analyst).
+  Roles are enforced by the server (for example only a senior analyst finalises an escalated case). Admin actions (adding cases,
+  resetting the demo) need a secret key held by the owner. The UI says "DEMO, synthetic data". The README describes what a real
+  deployment would use instead (proper login or single sign-on); that is not built.
+- Where it runs: on the owner's laptop and on a free hosting site.
+  - Laptop: same code, one command (Docker or plain Python).
+  - Free host: serves pre-computed sample cases (about 30 to 40) from a committed file; it does not run the model or hold the Kaggle data.
+    Free hosts sleep and may lose local storage on restart, so the demo reloads its sample cases at every start and has a reset button.
+- Before publishing any dataset rows, check the dataset licence on Kaggle; keep the sample small; masked card digits only.
+
 ## Open questions
-- Authentication for the demo: API key only, or a simple login with roles?
-- Where it will be demoed: local, GitHub Codespaces, or a free hosting tier.
+- Which free host, and its current free-tier limits (check before choosing).
+- Whether the laptop setup uses Docker or plain Python/Node (depends on what runs on the owner's machine).
