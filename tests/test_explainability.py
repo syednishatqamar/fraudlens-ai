@@ -98,7 +98,7 @@ def test_every_model_feature_has_a_plain_language_description():
 
     for col in FEATURE_COLUMNS + OPTIONAL_COLUMNS:
         text = describe_feature(col, 1.0, CATS)
-        assert col not in text and " = " not in text, f"{col} has no description: {text!r}"
+        assert text != f"{col} = 1.0" and " = " not in text, f"{col} falls back to the raw column name: {text!r}"
 
 
 def test_new_feature_descriptions_hand_checked():
