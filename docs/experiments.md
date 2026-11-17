@@ -40,3 +40,23 @@ amounts only, so it is not a label leak, but part of the 0.8288 to 0.8779 gain m
 This explains why SHAP shows a negative push for high ratios: pushes are relative to a reference of typical rows.
 Label-based features such as "earlier frauds on this card" would be unavailable live because fraud labels arrive late.
 Next: ablation with `scripts/train_tree.py --drop amt_vs_avg` and `--drop secs_since_prev`.
+
+## Ablation of behaviour features (validation, scripts/train_tree.py, seed 42, Kaggle, Nov 2026)
+
+| Features | Validation PR-AUC | Frauds caught in top 1,163 | False alarms |
+|---|---|---|---|
+| amount, hour, category | 0.8240 | 891 | 272 |
+| + secs_since_prev | 0.8685 | 920 | 243 |
+| + amt_vs_avg | 0.8518 | 897 | 266 |
+| + both | 0.8779 | 931 | 232 |
+
+Reading
+- Each feature helps; secs_since_prev adds more (+0.0445 PR-AUC) than amt_vs_avg (+0.0278). Together +0.0539, less than the
+  sum of the two, so they overlap.
+- amt_vs_avg alone adds only 6 caught frauds in the top-k, so the repeat-victim concern above affects the smaller share of the gain.
+- SHAP ranked secs_since_prev as the least important feature on average, yet removing it hurts more than removing amt_vs_avg:
+  average SHAP size is not the same as usefulness for the score.
+- The no-behaviour run scores 0.8240 here versus 0.8288 in the earlier notebook run. The likely cause is row order: this script sorts
+  by time, which changes the random 10% internal split HistGradientBoosting uses for early stopping. So an incidental choice moves PR-AUC by
+  about 0.005; treat differences smaller than that as noise.
+- Single seed, one validation period, synthetic data.
