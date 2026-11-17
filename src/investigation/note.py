@@ -32,6 +32,14 @@ Rules:
 """
 
 
+_MODEL_ID = re.compile(r"^[a-z0-9][a-z0-9._\-/]*$")
+
+
+def looks_like_model_id(name: str) -> bool:
+    """Cheap format check: lowercase letters, digits, dots, hyphens, underscores or slashes, no spaces."""
+    return bool(name) and bool(_MODEL_ID.match(name))
+
+
 class LLMClient(Protocol):
     def generate(self, prompt: str) -> str: ...
 

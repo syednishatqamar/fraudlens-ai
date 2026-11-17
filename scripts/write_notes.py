@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.investigation.case import render_case_text
-from src.investigation.note import GeminiClient, write_note
+from src.investigation.note import GeminiClient, looks_like_model_id, write_note
 from src.investigation.runner import iter_cases
 
 
@@ -55,6 +55,11 @@ def main() -> None:
         key = get_api_key()
         if not key or not a.model:
             sys.exit("--llm gemini needs --model and a GEMINI_API_KEY (environment variable or Kaggle Secret).")
+        if not looks_like_model_id(a.model):
+            sys.exit(
+                f"--model {a.model!r} does not look like a model ID (lowercase, no spaces). In Google AI Studio click "
+                "'Get code' and copy the text inside model=\"...\"."
+            )
         client = GeminiClient(key, a.model)
 
     for case, is_fraud in iter_cases(a.files, a.train_end, a.calib_end, a.n, seed=a.seed):

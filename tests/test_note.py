@@ -98,3 +98,10 @@ def test_error_details_are_opt_in_and_redact_the_key():
     llm.secret = "SECRET123"
     r = write_note(make_case(), llm, error_detail=True)
     assert "bad request for key ***" in r.issues[0] and "SECRET123" not in r.issues[0]
+
+
+def test_model_id_format_check():
+    from src.investigation.note import looks_like_model_id
+
+    assert looks_like_model_id("some-model-name-1.5")
+    assert not looks_like_model_id("PUT_MODEL_NAME_HERE") and not looks_like_model_id("Some Model Name") and not looks_like_model_id("")
