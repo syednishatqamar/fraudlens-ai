@@ -31,6 +31,8 @@ def add_behaviour_features(df: pd.DataFrame, schema: Schema = Schema()) -> pd.Da
     amt_vs_avg:      amount divided by the mean of the customer's earlier amounts (NaN for the first).
     txn_count_1h / txn_count_24h: number of the customer's EARLIER transactions in the last hour / 24 hours
                      (0 when there are none; the current transaction is not counted).
+    new_merchant:    1 if this customer has not shopped at this merchant in any earlier transaction, else 0
+                     (a customer's very first transaction is always 1).
 
     `df[schema.time]` must already be a datetime column (load_transactions does this).
     """
@@ -40,6 +42,8 @@ def add_behaviour_features(df: pd.DataFrame, schema: Schema = Schema()) -> pd.Da
     prev_sum = g[schema.amount].cumsum() - out[schema.amount]  # earlier amounts only
     prev_cnt = g.cumcount()                                    # number of earlier rows
     out["amt_vs_avg"] = out[schema.amount] / (prev_sum / prev_cnt.where(prev_cnt > 0))
+
+    out["new_merchant"] = (out.groupby([schema.customer, schema.merchant]).cumcount() == 0).astype("int64")
 
     seconds = (out[schema.time] - out[schema.time].min()).dt.total_seconds().to_numpy()
     groups = out.groupby(schema.customer).indices  # row positions per customer, already chronological

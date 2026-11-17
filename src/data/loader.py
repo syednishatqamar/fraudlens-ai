@@ -19,9 +19,17 @@ class Schema:
     merchant: str = "merchant"
     category: str = "category"
     amount: str = "amt"
+    cust_lat: str = "lat"
+    cust_long: str = "long"
+    merch_lat: str = "merch_lat"
+    merch_long: str = "merch_long"
 
     def required(self) -> list[str]:
         return [self.label, self.time, self.customer, self.merchant, self.category, self.amount]
+
+    def geo(self) -> list[str]:
+        """Location columns; only needed for the distance feature, so not part of required()."""
+        return [self.cust_lat, self.cust_long, self.merch_lat, self.merch_long]
 
 
 class SchemaError(ValueError):

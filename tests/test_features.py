@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.features.behaviour import add_behaviour_features
 from src.models.evaluate import top_k_caught
@@ -102,3 +103,57 @@ def test_velocity_columns_are_opt_in_for_the_tree_model():
     assert list(make_tree_features(out, enc).columns) == FEATURE_COLUMNS
     cols = FEATURE_COLUMNS + VELOCITY_COLUMNS
     assert list(make_tree_features(out, enc, columns=cols).columns) == cols
+
+
+def test_haversine_known_distances():
+    from src.features.geo import haversine_km
+
+    assert haversine_km(0, 0, 0, 0) == pytest.approx(0.0)
+    assert haversine_km(0, 0, 0, 1) == pytest.approx(111.19, rel=0.01)          # one degree of longitude at the equator
+    assert haversine_km(40.7128, -74.0060, 34.0522, -118.2437) == pytest.approx(3936, rel=0.01)  # New York to Los Angeles
+
+
+def test_location_features_need_location_columns():
+    from src.features.geo import add_location_features
+
+    with pytest.raises(KeyError, match="lat"):
+        add_location_features(synthetic(10))
+
+
+def test_location_features_add_distance_column():
+    from src.features.geo import add_location_features
+
+    df = synthetic(10).assign(lat=0.0, long=0.0, merch_lat=0.0, merch_long=1.0)
+    out = add_location_features(df)
+    assert out["distance_km"].between(111, 112).all() and len(out) == 10
+
+
+def test_new_merchant_flag_hand_checked_and_per_customer():
+    df = _one_customer([0, 10, 20, 30])
+    df["merchant"] = ["a", "b", "a", "c"]
+    other = _one_customer([5]).assign(cc_num=2, merchant="a")
+    out = add_behaviour_features(pd.concat([df, other], ignore_index=True))
+    assert out.loc[out["cc_num"] == 1, "new_merchant"].tolist() == [1, 1, 0, 1]
+    assert out.loc[out["cc_num"] == 2, "new_merchant"].tolist() == [1]
+
+
+def test_new_merchant_ignores_future_rows():
+    base = synthetic(400, 3)
+    base["trans_date_trans_time"] = pd.to_datetime(base["trans_date_trans_time"])
+    a = add_behaviour_features(base)
+    extra = base.iloc[[0]].copy()
+    extra["trans_date_trans_time"] = base["trans_date_trans_time"].max() + pd.Timedelta(minutes=1)
+    b = add_behaviour_features(pd.concat([base, extra], ignore_index=True))
+    assert a["new_merchant"].tolist() == b["new_merchant"].iloc[: len(a)].tolist()
+
+
+def test_all_optional_columns_reach_the_tree_matrix_when_present():
+    from src.features.geo import add_location_features
+    from src.models.tree import FEATURE_COLUMNS, OPTIONAL_COLUMNS
+
+    df = synthetic(300, 3).assign(lat=1.0, long=2.0, merch_lat=1.5, merch_long=2.5)
+    df["trans_date_trans_time"] = pd.to_datetime(df["trans_date_trans_time"])
+    out = add_location_features(add_behaviour_features(df))
+    enc = fit_category_encoder(out)
+    X = make_tree_features(out, enc, columns=FEATURE_COLUMNS + OPTIONAL_COLUMNS)
+    assert list(X.columns) == FEATURE_COLUMNS + OPTIONAL_COLUMNS and not X["new_merchant"].isna().any()

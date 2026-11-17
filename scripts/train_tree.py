@@ -19,8 +19,9 @@ from sklearn.metrics import average_precision_score
 from src.data.loader import Schema, load_transactions
 from src.data.split import split_summary
 from src.features.behaviour import add_behaviour_features
+from src.features.geo import add_location_features
 from src.models.evaluate import top_k_caught
-from src.models.tree import FEATURE_COLUMNS, VELOCITY_COLUMNS, build_tree_model, fit_category_encoder, make_tree_features
+from src.models.tree import FEATURE_COLUMNS, OPTIONAL_COLUMNS, build_tree_model, fit_category_encoder, make_tree_features
 
 
 def main() -> None:
@@ -30,14 +31,16 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--seeds", type=int, nargs="*", default=[],
                     help="train once per seed and report mean and std of validation PR-AUC (measures run-to-run noise)")
-    ap.add_argument("--add", nargs="*", default=[], choices=VELOCITY_COLUMNS,
-                    help="optional velocity features to include, e.g. --add txn_count_1h txn_count_24h")
+    ap.add_argument("--add", nargs="*", default=[], choices=OPTIONAL_COLUMNS,
+                    help="optional features to include: txn_count_1h txn_count_24h new_merchant distance_km")
     ap.add_argument("--drop", nargs="*", default=[], choices=FEATURE_COLUMNS,
                     help="feature columns to leave out (ablation), e.g. --drop amt_vs_avg")
     a = ap.parse_args()
 
     s = Schema()
     df = add_behaviour_features(load_transactions(a.files, s), s)  # features use past rows only
+    if all(c in df.columns for c in s.geo()):
+        df = add_location_features(df, s)
     cut = a.train_end
     train, val = df[df[s.time] < cut], df[df[s.time] >= cut]
     print(split_summary({"train": train, "validation": val}, s.time, s.label), "\n")

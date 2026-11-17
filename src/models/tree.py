@@ -15,6 +15,9 @@ from src.data.loader import Schema
 
 FEATURE_COLUMNS = ["amount", "hour", "category_code", "secs_since_prev", "amt_vs_avg"]  # default set
 VELOCITY_COLUMNS = ["txn_count_1h", "txn_count_24h"]  # optional, opt in via `columns`
+NOVELTY_COLUMNS = ["new_merchant"]
+LOCATION_COLUMNS = ["distance_km"]
+OPTIONAL_COLUMNS = VELOCITY_COLUMNS + NOVELTY_COLUMNS + LOCATION_COLUMNS
 
 
 def fit_category_encoder(train_df: pd.DataFrame, schema: Schema = Schema()) -> OrdinalEncoder:
@@ -39,7 +42,7 @@ def make_tree_features(
         },
         index=df.index,
     )
-    for c in VELOCITY_COLUMNS:
+    for c in OPTIONAL_COLUMNS:
         if c in df.columns:
             full[c] = df[c].to_numpy()
     return full[list(columns)]
