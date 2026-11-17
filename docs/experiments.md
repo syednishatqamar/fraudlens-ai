@@ -74,3 +74,17 @@ Baseline here is the five-feature model (0.8779, 931 caught, 232 false alarms).
 Reading: gain is small (+0.0127 for both, +10 frauds caught). Each count alone is within the roughly 0.005 noise level seen earlier;
 the pair together is about 2.5x that, but this is one seed and one validation period. Diminishing returns versus the first two behaviour
 features (+0.054). Measure noise properly with `--seeds`.
+
+## Seed-to-seed noise check (validation, scripts/train_tree.py --seeds 1 2 3 4 5, Kaggle, Nov 2026)
+
+| Features | PR-AUC per seed | Mean | Std | Frauds caught per seed (of 1,163) |
+|---|---|---|---|---|
+| five features | 0.8810, 0.8797, 0.8816, 0.8772, 0.8845 | 0.8808 | 0.0027 | 935, 934, 932, 933, 936 |
+| + txn_count_1h, txn_count_24h | 0.8911, 0.8924, 0.8906, 0.8835, 0.8910 | 0.8897 | 0.0035 | 941, 939, 942, 929, 942 |
+
+Reading
+- Mean difference is +0.0089, about 4 standard errors of the difference (std/sqrt(5) per group), so the gain is unlikely to be seed noise.
+- The seed only changes HistGradientBoosting's internal early-stopping split. It does not measure variation from using a
+  different time period or a different draw of the 1,163 validation frauds, which is probably larger. Not quantified.
+- Practical gain is small: about 5 more frauds caught in the top-k on average (934 to 939).
+- Use the five-feature mean 0.8808 (std 0.0027) as the baseline reference, not the single-seed 0.8779.
