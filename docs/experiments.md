@@ -60,3 +60,17 @@ Reading
   by time, which changes the random 10% internal split HistGradientBoosting uses for early stopping. So an incidental choice moves PR-AUC by
   about 0.005; treat differences smaller than that as noise.
 - Single seed, one validation period, synthetic data.
+
+## Recent-transaction counts (validation, scripts/train_tree.py --add, seed 42, Kaggle, Nov 2026)
+
+Baseline here is the five-feature model (0.8779, 931 caught, 232 false alarms).
+
+| Added features | Validation PR-AUC | Caught (of 1,163) | False alarms |
+|---|---|---|---|
+| txn_count_1h | 0.8824 | 931 | 232 |
+| txn_count_24h | 0.8786 | 934 | 229 |
+| both | 0.8906 | 941 | 222 |
+
+Reading: gain is small (+0.0127 for both, +10 frauds caught). Each count alone is within the roughly 0.005 noise level seen earlier;
+the pair together is about 2.5x that, but this is one seed and one validation period. Diminishing returns versus the first two behaviour
+features (+0.054). Measure noise properly with `--seeds`.

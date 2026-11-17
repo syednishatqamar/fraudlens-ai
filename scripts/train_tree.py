@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import numpy as np
 from sklearn.metrics import average_precision_score
 
 from src.data.loader import Schema, load_transactions
@@ -27,6 +28,8 @@ def main() -> None:
     ap.add_argument("--files", nargs="+", required=True, help="training-period file(s), not the final test file")
     ap.add_argument("--train-end", required=True, help="train = rows before this date; validation = rest")
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--seeds", type=int, nargs="*", default=[],
+                    help="train once per seed and report mean and std of validation PR-AUC (measures run-to-run noise)")
     ap.add_argument("--add", nargs="*", default=[], choices=VELOCITY_COLUMNS,
                     help="optional velocity features to include, e.g. --add txn_count_1h txn_count_24h")
     ap.add_argument("--drop", nargs="*", default=[], choices=FEATURE_COLUMNS,
@@ -44,11 +47,22 @@ def main() -> None:
     xtr = make_tree_features(train, enc, s, cols)
     xva = make_tree_features(val, enc, s, cols)
     print("features used:", list(xtr.columns))
-    model = build_tree_model(a.seed).fit(xtr, train[s.label])
-    scores = model.predict_proba(xva)[:, 1]
     y = val[s.label].to_numpy()
-    print("validation PR-AUC:", round(float(average_precision_score(y, scores)), 4))
-    print("top-k:", top_k_caught(y, scores))
+    seeds = a.seeds or [a.seed]
+    aps = []
+    for sd in seeds:
+        model = build_tree_model(sd).fit(xtr, train[s.label])
+        scores = model.predict_proba(xva)[:, 1]
+        ap_score = float(average_precision_score(y, scores))
+        aps.append(ap_score)
+        tk = top_k_caught(y, scores)
+        if len(seeds) > 1:
+            print(f"seed {sd}: PR-AUC {ap_score:.4f}  caught {tk['caught']}/{tk['frauds_total']}")
+        else:
+            print("validation PR-AUC:", round(ap_score, 4))
+            print("top-k:", tk)
+    if len(seeds) > 1:
+        print(f"PR-AUC over {len(seeds)} seeds: mean {np.mean(aps):.4f}, std {np.std(aps, ddof=1):.4f}")
 
 
 if __name__ == "__main__":
